@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ledger League</title>
+<meta name="description" content="A live business simulation for 4–10 teams. Play from any phone or laptop.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230F6E5A'/%3E%3Ctext x='32' y='46' font-size='40' text-anchor='middle' fill='white' font-family='Arial' font-weight='700'%3E%E2%82%B9%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a ledger-style console — one column of stacked panels, wide tables scroll inside their own frames */
+:root{
+  --bg:#F2F5F3; --surface:#FFFFFF; --sunk:#E8EEEB; --ink:#13201C; --muted:#5A6B65; --line:#D5DDD9;
+  --accent:#0F6E5A; --accent-ink:#FFFFFF; --soft:#DFF0EA; --gold:#B57A06; --gold-soft:#FBF0D6;
+  --good:#1D8A4C; --warn:#A66A0F; --bad:#BF3A2E; --bad-soft:#FBE6E3;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0D1412; --surface:#151F1C; --sunk:#1B2824; --ink:#E4EDE9; --muted:#93A59E; --line:#28362F;
+  --accent:#40B896; --accent-ink:#04211A; --soft:#173229; --gold:#E3AE45; --gold-soft:#33290F;
+  --good:#4CC47E; --warn:#E0A341; --bad:#F2766B; --bad-soft:#3A1E1B; color-scheme:dark}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+img{max-width:100%}
+.wrap{max-width:1120px;margin:0 auto;padding-block:16px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:1.65rem;font-weight:800}
+h2{font-size:1.2rem;font-weight:700}
+h3{font-size:1rem;font-weight:700}
+p{margin:0}
+a{color:var(--accent)}
+.muted{color:var(--muted)}
+.small{font-size:.85rem}
+.num,.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.label{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:2px solid var(--ink);padding-bottom:12px}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit}
+.mark{width:42px;height:42px;border-radius:8px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-size:1.4rem;flex:none}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:.78rem;font-weight:600;border:1px solid var(--line);background:var(--surface);white-space:nowrap}
+.chip.live{background:var(--soft);border-color:transparent;color:var(--accent)}
+.chip.live::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.chip.gold{background:var(--gold-soft);color:var(--gold);border-color:transparent}
+.chip.bad{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.kpi{background:var(--surface);box-shadow:1px 0 0 var(--line),0 1px 0 var(--line);padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.kpi .v{font-family:var(--f-mono);font-size:1.12rem;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .d{font-size:.78rem;color:var(--muted)}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.tab{background:none;border:0;border-bottom:3px solid transparent;padding:8px 12px;font:600 .92rem var(--f-body);color:var(--muted);cursor:pointer}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.btn{font:600 .92rem var(--f-body);border-radius:8px;padding:9px 16px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.big{padding:13px 22px;font-size:1rem}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.link{border:0;background:none;padding:4px 6px;color:var(--accent);text-decoration:underline}
+button:disabled{opacity:.5;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label{font-size:.82rem;font-weight:600}
+.field .hint{font-size:.76rem;color:var(--muted)}
+input,select{font:inherit;font-family:var(--f-mono);font-size:16px;padding:9px 10px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--ink);width:100%;min-width:0}
+input.text{font-family:var(--f-body)}
+input[type=range]{padding:0;accent-color:var(--accent)}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th,td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:var(--sunk)}
+td{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left;font-family:var(--f-body)}
+td.txt{font-family:var(--f-body);text-align:left}
+tr:last-child td{border-bottom:0}
+tr.me td{background:var(--soft)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:7px;vertical-align:-1px;flex:none}
+.on{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good);margin-right:6px}
+.off{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--line);margin-right:6px}
+.pos{color:var(--good)} .neg{color:var(--bad)}
+.event{border-left:4px solid var(--gold);background:var(--gold-soft);padding:12px 14px;border-radius:0 8px 8px 0;display:flex;flex-direction:column;gap:2px}
+.event b{font-family:var(--f-display);font-size:1.05rem}
+.team-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.team-card{border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--surface);text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:6px;font:inherit;color:inherit}
+.team-card:hover{border-color:var(--accent)}
+.team-card .nm{font-family:var(--f-display);font-weight:700;font-size:1.05rem}
+.subgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.subcell{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.subcell.done{border-color:var(--accent);background:var(--soft)}
+.preview{background:var(--sunk);border-radius:8px;padding:12px 14px;display:grid;grid-template-columns:1fr auto;gap:4px 16px;font-size:.88rem}
+.preview .num{text-align:right}
+.preview .total{font-weight:600;border-top:1px solid var(--line);padding-top:6px}
+.notice{padding:10px 14px;border-radius:8px;background:var(--soft);font-size:.9rem}
+.notice.warn{background:var(--gold-soft)}
+.notice.bad{background:var(--bad-soft);color:var(--bad)}
+.log{display:flex;flex-direction:column;max-height:380px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.log div{display:grid;grid-template-columns:64px 1fr;gap:10px;padding:7px 12px;border-bottom:1px solid var(--line);font-size:.86rem}
+.log div:last-child{border-bottom:0}
+.log time{font-family:var(--f-mono);color:var(--muted);font-size:.8rem}
+details.rules{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:12px 16px}
+details.rules summary{cursor:pointer;font-weight:600}
+details.rules ul{margin:10px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:5px;font-size:.9rem}
+.chart svg{width:100%;height:auto;display:block}
+.chart text{fill:var(--muted);font-family:var(--f-mono);font-size:11px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:.82rem}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:8px;font-size:.9rem;max-width:calc(100% - 32px);z-index:5}
+.banner{position:sticky;top:env(safe-area-inset-top,0px);z-index:4;background:var(--gold-soft);color:var(--ink);text-align:center;padding:8px 16px;font-size:.88rem;border-bottom:1px solid var(--line)}
+.center{min-height:40vh;display:grid;place-items:center;text-align:center}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;border-radius:8px;background:var(--bad-soft)}
+.timer{font-family:var(--f-mono);font-size:1.4rem;font-variant-numeric:tabular-nums}
+.timer.over{color:var(--bad)}
+.joinbox{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center}
+.joinbox img{width:150px;height:150px;background:#fff;border-radius:8px;padding:6px}
+.code{font-family:var(--f-mono);font-size:2.2rem;font-weight:500;letter-spacing:.18em}
+.copyrow{display:flex;gap:6px;align-items:center;min-width:0}
+.copyrow input{font-size:.85rem;padding:6px 8px}
+.hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.hero .panel{gap:16px}
+.codein{font-family:var(--f-mono);font-size:1.6rem;letter-spacing:.2em;text-transform:uppercase;text-align:center}
+/* big screen */
+.screen{font-size:18px}
+.screen .code{font-size:3.4rem}
+.screen .timer{font-size:3rem}
+.screen .joinbox img{width:220px;height:220px}
+.screen table{font-size:1rem}
+@media (max-width:520px){.joinbox{grid-template-columns:1fr;justify-items:start}.code{font-size:1.8rem}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="banner" id="banner" hidden>Reconnecting to the game server…</div>
+<div class="wrap" id="app"><div class="center"><h2>Loading Ledger League…</h2></div></div>
+<div class="toast" id="toast" hidden></div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/engine.js"></script>
+<script>
+const {K,EVENTS,SCHEDULES,DEFAULT_DEC,clamp,num,normDec,estUnitCost}=Engine;
+const COLORS=["#2F7DD1","#D9480F","#2B9348","#9C36B5","#D99A00","#0B9AA6","#C2255C","#5C7CFA","#8D6E2F","#6B7785"];
+const DEFAULT_NAMES=["Apex Ltd","Bharat Works","Comet Industries","Delta Brands","Everest Goods","Falcon Products","Ganga Consumer","Horizon Homeware","Indus Makers","Jupiter Retail"];
+
+/* ---------- storage (per device) ---------- */
+const ls={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+function myPid(){let p=ls.get("ll_pid");if(!p||!/^[A-Za-z0-9_-]{8,40}$/.test(p)){const a=new Uint8Array(12);crypto.getRandomValues(a);p=btoa(String.fromCharCode(...a)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");ls.set("ll_pid",p)}return p}
+
+/* ---------- state ---------- */
+const Q=new URLSearchParams(location.search);
+const C={mode:"home",code:null,key:null,pid:myPid(),name:ls.get("ll_name",""),joined:false,view:null,offset:0,
+  draft:{},draftKey:"",busy:false,tab:"control",confirm:null,connected:false,kicked:false,error:""};
+if(Q.has("screen")){C.mode="screen";C.code=(Q.get("screen")||"").toUpperCase()}
+else if(Q.has("host")){C.mode="host";C.code=(Q.get("host")||"").toUpperCase()||null;C.key=Q.get("key")||null;
+  if(C.code&&!C.key){const h=ls.get("ll_hosted",[]).find(x=>x.code===C.code);if(h)C.key=h.key}}
+else if(Q.has("g")){C.mode="player";C.code=(Q.get("g")||"").toUpperCase()}
+
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const inr=n=>"₹"+Math.round(n).toLocaleString("en-IN");
+function rs(n){const a=Math.abs(n),s=n<0?"−":"";if(a>=1e7)return s+"₹"+(a/1e7).toFixed(2)+" Cr";if(a>=1e5)return s+"₹"+(a/1e5).toFixed(2)+" L";return s+"₹"+Math.round(a).toLocaleString("en-IN")}
+const units=n=>Math.round(n).toLocaleString("en-IN");
+const pct=n=>(n*100).toFixed(1)+"%";
+const tm=t=>t?new Date(t).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}):"";
+const val=(id,d)=>C.draft[id]!==undefined?C.draft[id]:d;
+const now=()=>Date.now()+C.offset;
+function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,4000)}
+const origin=location.origin;
+const joinUrl=code=>`${origin}/?g=${code}`;
+const screenUrl=code=>`${origin}/?screen=${code}`;
+const V=()=>C.view;
+const teamById=id=>(V()&&V().teams.find(t=>t.id===id))||{name:"?"};
+const colorOf=id=>{const i=V()?V().teams.findIndex(t=>t.id===id):0;return COLORS[(i<0?0:i)%COLORS.length]};
+const dotOf=id=>`<span class="dot" style="background:${colorOf(id)}"></span>`;
+
+/* ---------- socket ---------- */
+const sock=io({transports:["websocket","polling"]});
+function emit(ev,data){return new Promise(res=>{if(!sock.connected)return res({ok:false,error:"Not connected to the server. Check your internet and try again."});
+  const t=setTimeout(()=>res({ok:false,error:"The server didn't answer. Try again."}),10000);sock.emit(ev,data,r=>{clearTimeout(t);res(r||{ok:false,error:"No answer"})})})}
+async function attach(){
+  C.error="";
+  if(C.mode==="host"&&C.code&&C.key){const r=await emit("host:attach",{code:C.code,key:C.key});if(!r.ok){C.error=r.error;C.view=null}}
+  else if(C.mode==="screen"&&C.code){const r=await emit("screen:attach",{code:C.code});if(!r.ok)C.error=r.error}
+  else if(C.mode==="player"&&C.code&&C.name&&C.joined!==false){const r=await emit("player:join",{code:C.code,pid:C.pid,name:C.name});if(!r.ok){C.error=r.error;C.joined=false}else C.joined=true}
+  render();
+}
+sock.on("connect",()=>{C.connected=true;$("#banner").hidden=true;attach()});
+sock.on("disconnect",()=>{C.connected=false;$("#banner").hidden=false});
+sock.on("view",v=>{C.view=v;C.offset=v.serverNow-Date.now();render()});
+sock.on("kicked",()=>{C.kicked=true;C.joined=false;C.view=null;render()});
+if(C.mode==="player"&&C.code&&C.name)C.joined=true; else if(C.mode==="player")C.joined=false;
+
+async function run(fn){if(C.busy)return;C.busy=true;render();try{await fn()}finally{C.busy=false;render()}}
+async function hostAction(action,extra={}){const r=await emit("host:action",{code:C.code,key:C.key,action,...extra});if(!r.ok)toast(r.error);return r}
+
+/* ---------- actions ---------- */
+const act={
+  goJoin:()=>{const c=(val("h-code","")||"").trim().toUpperCase();if(!/^[A-Z0-9]{4,8}$/.test(c)){toast("Enter the 5-character game code from your facilitator.");return}location.href="/?g="+c},
+  createGame:()=>run(async()=>{const c=setupCfg();const r=await emit("host:create",c);if(!r.ok){toast(r.error);return}
+    const list=ls.get("ll_hosted",[]).filter(x=>x.code!==r.code);list.unshift({code:r.code,key:r.key,at:Date.now(),title:c.title});ls.set("ll_hosted",list.slice(0,20));
+    C.code=r.code;C.key=r.key;C.draft={};history.replaceState(null,"",`/?host=${r.code}&key=${encodeURIComponent(r.key)}`);await attach();toast("Game created. Share the code or QR so teams can join.")}),
+  openRound:()=>run(async()=>{const r=await hostAction("openRound",{minutes:num(val("f-timer",10),10)});if(r.ok)toast(`Quarter ${V().lastClosed+1} is open`)}),
+  closeRound:()=>run(async()=>{const r=await hostAction("closeRound");if(r.ok){C.tab="leaderboard";toast("Results are out")}}),
+  reopen:()=>run(async()=>{await hostAction("reopen");C.confirm=null}),
+  endGame:()=>run(async()=>{await hostAction("endGame");C.confirm=null}),
+  extend:()=>run(()=>hostAction("extend")),
+  kick:pid=>run(()=>hostAction("kick",{pid})),
+  joinGame:()=>run(async()=>{const n=(val("p-name",C.name)||"").trim();if(!n){toast("Enter your name");return}
+    C.name=n.slice(0,30);ls.set("ll_name",C.name);C.joined=true;C.kicked=false;await attach();}),
+  pick:tid=>run(async()=>{const r=await emit("player:pickTeam",{teamId:tid});if(!r.ok)toast(r.error);else toast("You joined "+teamById(tid).name)}),
+  leaveTeam:()=>run(async()=>{const r=await emit("player:leaveTeam",{});if(!r.ok)toast(r.error)}),
+  rename:()=>{C.joined=false;C.view=null;render()},
+  submit:()=>run(async()=>{const r=await emit("player:submit",{dec:readDecision()});if(!r.ok){toast(r.error);return}
+    Object.keys(C.draft).filter(k=>k.startsWith("d-")).forEach(k=>delete C.draft[k]);toast(`Decisions saved for Quarter ${V().round}. You can revise until the round closes.`)}),
+  copy:id=>{const el=document.getElementById(id);if(!el)return;const t=el.value;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast("Copied")).catch(()=>{el.select();toast("Press Ctrl+C / Cmd+C to copy")})},
+  exportCsv:()=>{const v=V();const cols=["round","event","team","submitted_by","auto","price","production","marketing","rd","capex","loan_change","demand","sales","lost_sales","share_pct","unit_cost","revenue","cogs","gross_profit","overhead","upkeep","storage","depreciation","interest","tax","emergency_loan","emergency_fee","net_profit","cash","inventory","capacity","brand","quality","loan","net_worth","company_value","rank"];
+    const lines=[cols.join(",")];
+    for(const rr of v.results)for(const t of v.teams){const x=rr.teams[t.id];if(!x)continue;
+      const row=[rr.round,EVENTS[rr.market.event].name,t.name,x.by||"",x.auto?"yes":"no",x.dec.price,x.dec.production,x.dec.marketing,x.dec.rd,x.dec.capex,x.dec.loan,x.demand,x.sales,x.lostSales,x.share*100,x.unitCost,x.revenue,x.cogs,x.grossProfit,x.overhead,x.upkeep,x.holding,x.depreciation,x.interest,x.tax,x.emergency,x.fee,x.netProfit,x.cash,x.inventory,x.capacity,x.brand,x.quality,x.loan,x.netWorth,x.value,x.rank]
+        .map(z=>typeof z==="number"?Math.round(z*100)/100:'"'+String(z).replace(/"/g,'""')+'"');lines.push(row.join(","))}
+    download(`ledger-league-${v.code}.csv`,"﻿"+lines.join("\n"),"text/csv")},
+  exportLog:()=>{const v=V();const lines=["time,event"].concat(v.log.map(l=>`"${new Date(l.t).toLocaleString("en-IN")}","${String(l.m).replace(/"/g,'""')}"`));download(`ledger-league-${v.code}-activity.csv`,"﻿"+lines.join("\n"),"text/csv")}
+};
+function download(name,data,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+function setupCfg(){
+  const n=clamp(parseInt(val("s-n",6)),4,10),rounds=clamp(parseInt(val("s-rounds",6)),4,8);
+  return {title:val("s-title",""),n,rounds,startCashLakh:num(val("s-cash",50),50),
+    teamNames:Array.from({length:n},(_,i)=>val("s-team-"+i,DEFAULT_NAMES[i])),
+    events:Array.from({length:rounds},(_,i)=>val("s-ev-"+i,SCHEDULES[rounds][i]))};
+}
+/* Read what is actually in the form (falls back to the saved draft) */
+function field(id){const el=document.getElementById(id);return el?el.value:val(id,0)}
+function readDecision(){const L=id=>Math.round(num(field(id))*1e5);
+  return{price:Math.round(num(field("d-price"))),production:Math.round(num(field("d-prod"))),marketing:L("d-mkt"),rd:L("d-rd"),capex:L("d-capex"),loan:L("d-loan")}}
+
+/* ---------- shared pieces ---------- */
+function statusChip(v){if(!v)return"";
+  if(v.status==="lobby")return`<span class="chip gold">Lobby · teams joining</span>`;
+  if(v.status==="open")return`<span class="chip live">Quarter ${v.round} of ${v.totalRounds} · decisions open</span>`;
+  if(v.status==="closed")return`<span class="chip">Quarter ${v.round} of ${v.totalRounds} · results out</span>`;
+  if(v.status==="finished")return`<span class="chip gold">Game over · final results</span>`;return""}
+function eventCard(key,r){const e=EVENTS[key]||EVENTS.normal;return`<div class="event"><span class="label">Quarter ${r} market news</span><b>${e.name}</b><span class="small">${e.desc}</span></div>`}
+function timerHtml(v){if(!v||v.status!=="open"||!v.deadline)return"";return`<div><span class="label">Time left</span><div class="timer" id="timer"></div></div>`}
+function tickTimer(){const el=$("#timer");const v=V();if(!el||!v||!v.deadline)return;const ms=v.deadline-now();
+  if(ms<=0){el.textContent="Time's up";el.classList.add("over");return}el.classList.remove("over");
+  el.textContent=`${Math.floor(ms/60000)}:${String(Math.floor(ms%60000/1000)).padStart(2,"0")}`}
+setInterval(tickTimer,1000);
+function leaderboard(v,highlight){
+  if(!v.board.length)return`<p class="muted">Rankings appear here after Quarter 1 closes. Every team starts with ${rs(v.startCash)} cash and identical factories.</p>`;
+  const rows=v.board.map(x=>`<tr class="${x.id===highlight?"me":""}"><td>${dotOf(x.id)}${x.rank}. ${esc(teamById(x.id).name)}</td>
+    <td>${rs(x.value)}</td><td>${rs(x.netWorth)}</td><td class="${x.netProfit>=0?"pos":"neg"}">${rs(x.netProfit)}</td><td class="${x.cumProfit>=0?"pos":"neg"}">${rs(x.cumProfit)}</td><td>${pct(x.share)}</td><td>${x.brand.toFixed(0)}</td><td>${x.quality.toFixed(0)}</td><td>${rs(x.cash)}</td><td>${rs(x.loan)}</td></tr>`).join("");
+  return`<div class="tbl-wrap"><table><thead><tr><th>Team</th><th>Company value</th><th>Net worth</th><th>Q${v.lastRound} profit</th><th>Total profit</th><th>Mkt share</th><th>Brand</th><th>Quality</th><th>Cash</th><th>Loan</th></tr></thead><tbody>${rows}</tbody></table></div>${chart(v,highlight)}`;
+}
+function chart(v,highlight){
+  if(!v.lastRound)return"";const W=680,H=260,L=64,Rp=16,T=14,B=30,n=v.totalRounds;
+  const all=Object.values(v.series).flat();let lo=Math.min(...all),hi=Math.max(...all);const pad=(hi-lo)*0.08||1e5;lo-=pad;hi+=pad;
+  const X=i=>L+(W-L-Rp)*i/n,Y=x=>T+(H-T-B)*(1-(x-lo)/(hi-lo));
+  let grid="";for(let k=0;k<=4;k++){const y=lo+(hi-lo)*k/4;grid+=`<line x1="${L}" x2="${W-Rp}" y1="${Y(y)}" y2="${Y(y)}" stroke="var(--line)"/><text x="${L-6}" y="${Y(y)+4}" text-anchor="end">${rs(y).replace("₹","")}</text>`}
+  for(let i=0;i<=n;i++)grid+=`<text x="${X(i)}" y="${H-10}" text-anchor="middle">${i===0?"Start":"Q"+i}</text>`;
+  const lines=v.teams.map(t=>{const pts=v.series[t.id];const c=colorOf(t.id);const me=t.id===highlight;const d=pts.map((y,i)=>`${i?"L":"M"}${X(i).toFixed(1)},${Y(y).toFixed(1)}`).join("");const li=pts.length-1;
+    return`<path d="${d}" fill="none" stroke="${c}" stroke-width="${me?3.2:1.8}" stroke-linejoin="round" opacity="${highlight&&!me?.45:1}"/><circle cx="${X(li)}" cy="${Y(pts[li])}" r="${me?5:3.5}" fill="${c}"/>`}).join("");
+  return`<div class="chart"><p class="label">Company value by quarter</p><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Company value by quarter for each team">${grid}${lines}</svg><div class="legend">${v.teams.map(t=>`<span>${dotOf(t.id)}${esc(t.name)}</span>`).join("")}</div></div>`;
+}
+function marketReport(v){if(!v.market.length)return"";
+  return`<section class="panel"><h2>Market report</h2><div class="tbl-wrap"><table><thead><tr><th>Quarter</th><th>Market news</th><th>Demand (units)</th><th>Units sold</th><th>Avg price</th></tr></thead><tbody>${v.market.map(x=>`<tr><td>Q${x.round}</td><td class="txt">${EVENTS[x.event].name}</td><td>${units(x.demand)}</td><td>${units(x.sales)}</td><td>${inr(x.avgPrice)}</td></tr>`).join("")}</tbody></table></div></section>`}
+function rules(v){return`<details class="rules"><summary>How the game works</summary><ul>
+  <li>Each team runs a consumer-products company. Every team starts the same: ${v?rs(v.startCash):"₹50 L"} cash, a 10,000-unit factory, brand 50 and quality 50.</li>
+  <li>Each quarter, set your price, production, marketing, R&amp;D, factory expansion and loan. Anyone on the team can submit; the latest submission counts.</li>
+  <li>All teams sell into one shared market. Lower price, stronger brand and higher quality win a bigger share. If prices rise across the whole market, the market itself shrinks.</li>
+  <li>If you run out of stock you lose those customers; half of them buy from rivals who still have stock. Unsold units carry over at ₹15 per unit storage.</li>
+  <li>Fixed costs every quarter: ₹5 L overhead, ₹20 per unit of capacity, 5% depreciation on the factory, 3% interest on loans, 25% tax on profit.</li>
+  <li>If cash falls below zero, the bank covers it with an emergency loan plus a 5% fee.</li>
+  <li>Teams that don't submit repeat last quarter's price, production, marketing and R&amp;D, with no expansion or borrowing.</li>
+  <li><b>Winning:</b> highest company value at the end. Company value = cash + stock + factory − loans + brand × ₹50,000 + quality × ₹30,000.</li></ul></details>`}
+function header(right){return`<header class="top"><a class="brand" href="/"><div class="mark">₹</div><div><h1>Ledger League</h1><p class="muted small">Business simulation for 4–10 teams</p></div></a><div class="row">${right||""}</div></header>`}
+function joinPanel(v,big){const url=joinUrl(v.code);
+  return`<div class="joinbox"><img src="/qr.svg?t=${encodeURIComponent(url)}" alt="QR code to join game ${v.code}"><div style="min-width:0;display:flex;flex-direction:column;gap:6px">
+    <span class="label">Game code</span><span class="code">${v.code}</span>
+    <span class="small muted">Scan the QR, or open <b>${esc(origin.replace(/^https?:\/\//,""))}</b> and enter the code.</span>
+    ${big?"":`<div class="copyrow"><input id="c-join" readonly value="${esc(url)}"><button class="btn" data-act="copy" data-arg="c-join">Copy</button></div>`}</div></div>`}
+
+/* ---------- home ---------- */
+function homeView(){
+  const hosted=ls.get("ll_hosted",[]);
+  return header()+`<div class="hero">
+  <section class="panel"><div><h2>Join a game</h2><p class="muted small">Enter the code your facilitator shows on screen.</p></div>
+    <div class="field"><label for="h-code">Game code</label><input id="h-code" class="codein" maxlength="8" autocomplete="off" autocapitalize="characters" value="${esc(val("h-code",""))}" placeholder="ABCDE"></div>
+    <button class="btn primary big" data-act="goJoin">Join</button></section>
+  <section class="panel"><div><h2>Run a game</h2><p class="muted small">Set up 4–10 teams. They play on their own phones or laptops while you open each quarter, watch decisions come in and keep the full record.</p></div>
+    <a class="btn primary big" href="/?host">Host a new game</a>
+    ${hosted.length?`<div class="field"><span class="label">Games you host on this device</span>${hosted.slice(0,6).map(h=>`<a href="/?host=${h.code}&key=${encodeURIComponent(h.key)}">${h.code}${h.title?" · "+esc(h.title):""} <span class="muted small">${new Date(h.at).toLocaleDateString("en-IN")}</span></a>`).join("")}</div>`:""}
+  </section></div>`+rules(null);
+}
+
+/* ---------- host ---------- */
+function hostView(){
+  if(!C.code)return header()+setupView();
+  const v=V();
+  if(C.error)return header()+`<section class="panel"><h2>Can't open this game</h2><p class="muted">${esc(C.error)}</p><a class="btn" href="/?host">Set up a new game</a></section>`;
+  if(!v||v.role!=="host")return header()+`<section class="panel center"><h2>Opening your game…</h2></section>`;
+  const tabs=[["control","Control room"],["leaderboard","Leaderboard"],["record","Full record"],["players","Players"]];
+  const bar=`<div class="tabs" role="tablist">${tabs.map(([k,l])=>`<button class="tab" role="tab" aria-selected="${C.tab===k}" data-act="tab" data-arg="${k}">${l}</button>`).join("")}</div>`;
+  let body="";
+  if(C.tab==="control")body=controlView(v);
+  if(C.tab==="leaderboard")body=`<section class="panel"><div class="panel-head"><h2>Leaderboard</h2>${statusChip(v)}</div>${leaderboard(v)}</section>${marketReport(v)}`;
+  if(C.tab==="record")body=recordView(v);
+  if(C.tab==="players")body=playersView(v);
+  return header(`<span class="chip">Host · ${v.code}</span>`)+bar+body;
+}
+function setupView(){
+  const n=clamp(parseInt(val("s-n",6)),4,10),rounds=clamp(parseInt(val("s-rounds",6)),4,8);const sched=SCHEDULES[rounds];
+  const evOpts=sel=>Object.entries(EVENTS).map(([k,e])=>`<option value="${k}" ${k===sel?"selected":""}>${e.name}</option>`).join("");
+  return`<section class="panel"><div><h2>Set up a new game</h2><p class="muted small">Teams run competing consumer-products companies. Each quarter they set price, production, marketing, R&amp;D, factory expansion and borrowing. You open and close each quarter and see every decision as it comes in.</p></div>
+  <div class="form-grid">
+    <div class="field"><label for="s-title">Session name (optional)</label><input id="s-title" class="text" maxlength="60" value="${esc(val("s-title",""))}" placeholder="e.g. MBA batch B, Friday"></div>
+    <div class="field"><label for="s-n">Number of teams: <span class="num">${n}</span></label><input type="range" id="s-n" min="4" max="10" value="${n}" data-rerender></div>
+    <div class="field"><label for="s-rounds">Quarters to play</label><select id="s-rounds" data-rerender>${[4,5,6,7,8].map(x=>`<option ${x===rounds?"selected":""}>${x}</option>`).join("")}</select></div>
+    <div class="field"><label for="s-cash">Starting cash per team (₹ lakh)</label><input id="s-cash" type="number" min="10" max="500" step="5" value="${esc(val("s-cash",50))}"><span class="hint">Default ₹50 L. Every team also starts with a 10,000-unit factory.</span></div>
+  </div>
+  <h3>Team names</h3><div class="form-grid">${Array.from({length:n},(_,i)=>`<div class="field"><label for="s-team-${i}"><span class="dot" style="background:${COLORS[i]}"></span>Team ${i+1}</label><input id="s-team-${i}" class="text" maxlength="28" value="${esc(val("s-team-"+i,DEFAULT_NAMES[i]))}"></div>`).join("")}</div>
+  <h3>Market news by quarter</h3><p class="small muted">Teams only see each quarter's news when you open that quarter.</p>
+  <div class="form-grid">${Array.from({length:rounds},(_,i)=>`<div class="field"><label for="s-ev-${i}">Quarter ${i+1}</label><select id="s-ev-${i}">${evOpts(val("s-ev-"+i,sched[i]))}</select></div>`).join("")}</div>
+  <div class="row"><button class="btn primary big" data-act="createGame" ${C.busy?"disabled":""}>Create game</button></div></section>`;
+}
+function controlView(v){
+  const lc=v.lastClosed;let action="";
+  if(v.status==="lobby"||v.status==="closed"){const r=lc+1;
+    action=`${eventCard(v.events[r-1],r)}<div class="row" style="align-items:flex-end"><div class="field" style="max-width:190px"><label for="f-timer">Round timer (minutes)</label><input id="f-timer" type="number" min="0" max="120" value="${esc(val("f-timer",10))}"><span class="hint">0 = no timer</span></div>
+      <button class="btn primary" data-act="openRound" ${C.busy?"disabled":""}>Open Quarter ${r}</button>${lc?`<button class="btn" data-act="ask" data-arg="reopen">Reopen Quarter ${lc}</button>`:""}</div>`}
+  else if(v.status==="open"){const done=v.teams.filter(t=>t.submitted).length;
+    action=`${eventCard(v.events[v.round-1],v.round)}<div class="row" style="justify-content:space-between">${timerHtml(v)}<div class="row">${v.deadline?`<button class="btn" data-act="extend">+2 minutes</button>`:""}<button class="btn primary" data-act="closeRound" ${C.busy?"disabled":""}>Close Quarter ${v.round} and publish results</button></div></div>
+      <p class="small muted">${done} of ${v.teams.length} teams have submitted. Teams that don't submit repeat last quarter's operating decisions.</p>`}
+  else if(v.status==="finished"&&v.board.length){const w=v.board[0];
+    action=`<div class="notice"><b>${esc(teamById(w.id).name)}</b> wins with a company value of ${rs(w.value)}. Download the full record from “Full record”.</div><div class="row"><button class="btn" data-act="ask" data-arg="reopen">Reopen Quarter ${lc}</button></div>`}
+  const confirm=C.confirm==="reopen"?`<div class="confirm"><span>Reopen Quarter ${lc}? Its results are removed and teams can change their decisions.</span><button class="btn danger" data-act="reopen">Reopen</button><button class="btn" data-act="ask" data-arg="">Cancel</button></div>`
+    :C.confirm==="end"?`<div class="confirm"><span>End the game now? The current standings become final.</span><button class="btn danger" data-act="endGame">End game</button><button class="btn" data-act="ask" data-arg="">Cancel</button></div>`:"";
+  const online=v.players.filter(p=>p.online).length;
+  const subs=v.teams.map(t=>{const s=v.subsNow[t.id];const ps=v.players.filter(p=>p.teamId===t.id);
+    return`<div class="subcell ${s?"done":""}"><b>${dotOf(t.id)}${esc(t.name)}</b><span class="small muted">${ps.length} player${ps.length===1?"":"s"} · ${ps.filter(p=>p.online).length} online</span>
+      <span class="small">${v.status==="open"?(s?`Submitted ${tm(s.at)} by ${esc(s.byName)}`:"Waiting…"):"—"}</span></div>`}).join("");
+  const hostLink=`${origin}/?host=${v.code}&key=${encodeURIComponent(v.hostKey)}`;
+  return`<section class="panel"><div class="panel-head"><div><h2>Control room</h2><p class="muted small">${v.status==="lobby"?"Not started":`Quarter ${Math.max(v.round,lc)} of ${v.totalRounds}`} · ${v.teams.length} teams</p></div><div class="row">${statusChip(v)}${v.status!=="finished"?`<button class="btn link" data-act="ask" data-arg="end">End game</button>`:""}</div></div>${confirm}${action}</section>
+  <section class="panel"><div class="panel-head"><h2>Let teams join</h2><a class="btn" href="${screenUrl(v.code)}" target="_blank" rel="noopener">Open projector screen ↗</a></div>${joinPanel(v)}
+    <details><summary class="small">Your host link (keep private)</summary><p class="small muted" style="margin-block:6px">Open this on another device to run the game from there. Anyone with it can control the game.</p><div class="copyrow"><input id="c-host" readonly value="${esc(hostLink)}"><button class="btn" data-act="copy" data-arg="c-host">Copy</button></div></details></section>
+  <section class="panel"><div class="panel-head"><h2>${v.status==="open"?"Live submissions":"Teams"}</h2><span class="small muted">${v.players.length} players joined · ${online} online now</span></div><div class="subgrid">${subs}</div>${v.status==="open"?liveTable(v):""}</section>
+  <section class="panel"><h2>Activity log</h2>${activityLog(v)}</section>`;
+}
+function liveTable(v){
+  return`<div class="tbl-wrap"><table><thead><tr><th>Team</th><th>Price</th><th>Production</th><th>Marketing</th><th>R&amp;D</th><th>Expansion</th><th>Loan ±</th><th>By</th><th>At</th></tr></thead><tbody>${v.teams.map(t=>{const s=v.subsNow[t.id];const d=s&&s.dec;
+    return`<tr><td>${dotOf(t.id)}${esc(t.name)}</td>${d?`<td>${inr(d.price)}</td><td>${units(d.production)}</td><td>${rs(d.marketing)}</td><td>${rs(d.rd)}</td><td>${rs(d.capex)}</td><td>${rs(d.loan)}</td><td class="txt">${esc(s.byName)}</td><td>${tm(s.at)}</td>`:`<td colspan="8" class="txt muted">Not submitted yet</td>`}</tr>`}).join("")}</tbody></table></div>`}
+function activityLog(v){if(!v.log.length)return`<p class="muted">Joins, submissions and your actions appear here.</p>`;
+  return`<div class="log">${v.log.slice().reverse().map(l=>`<div><time>${tm(l.t)}</time><span>${l.kind==="host"?"<b>Facilitator:</b> ":""}${esc(l.m)}</span></div>`).join("")}</div>`}
+function recordView(v){
+  const blocks=v.results.slice().reverse().map(x=>`<div class="panel-head"><h3>Quarter ${x.round} · ${EVENTS[x.market.event].name}</h3><span class="small muted">Closed ${tm(x.closedAt)} · market ${units(x.market.demand)} units · avg price ${inr(x.market.avgPrice)}</span></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Team</th><th>Decided by</th><th>Price</th><th>Make</th><th>Marketing</th><th>R&amp;D</th><th>Expansion</th><th>Loan ±</th><th>Demand</th><th>Sold</th><th>Lost</th><th>Share</th><th>Revenue</th><th>Net profit</th><th>Cash</th><th>Stock</th><th>Capacity</th><th>Brand</th><th>Quality</th><th>Loan</th><th>Value</th><th>Rank</th></tr></thead><tbody>${v.teams.map(t=>{const y=x.teams[t.id];if(!y)return"";const d=y.dec;
+    return`<tr><td>${dotOf(t.id)}${esc(t.name)}</td><td class="txt">${y.auto?'<span class="chip bad">auto</span>':esc(y.by)}</td><td>${inr(d.price)}</td><td>${units(d.production)}</td><td>${rs(d.marketing)}</td><td>${rs(d.rd)}</td><td>${rs(d.capex)}</td><td>${rs(d.loan)}</td>
+    <td>${units(y.demand)}</td><td>${units(y.sales)}</td><td>${units(y.lostSales)}</td><td>${pct(y.share)}</td><td>${rs(y.revenue)}</td><td class="${y.netProfit>=0?"pos":"neg"}">${rs(y.netProfit)}</td><td>${rs(y.cash)}</td><td>${units(y.inventory)}</td><td>${units(y.capacity)}</td><td>${y.brand.toFixed(0)}</td><td>${y.quality.toFixed(0)}</td><td>${rs(y.loan)}${y.emergency?' <span class="chip bad">emergency</span>':""}</td><td>${rs(y.value)}</td><td>${y.rank}</td></tr>`}).join("")}</tbody></table></div>`).join("");
+  return`<section class="panel"><div class="panel-head"><div><h2>Full record</h2><p class="small muted">Every decision and result, newest quarter first. The server keeps this record; download a copy at the end of your session.</p></div>
+    <div class="row"><button class="btn" data-act="exportCsv" ${v.results.length?"":"disabled"}>Download results (CSV)</button><button class="btn" data-act="exportLog">Download activity log</button></div></div>
+  ${v.status==="open"?`<h3>Quarter ${v.round} (in progress)</h3>${liveTable(v)}`:""}
+  ${blocks||(v.status==="open"?"":`<p class="muted">Nothing recorded yet. Results land here as each quarter closes.</p>`)}</section>
+  <section class="panel"><h2>Activity log</h2>${activityLog(v)}</section>`;
+}
+function playersView(v){
+  const none=v.players.filter(p=>!p.teamId);
+  const cell=(title,id,ps)=>`<div class="subcell"><b>${id?dotOf(id):""}${esc(title)}</b>${ps.length?ps.map(p=>`<div class="row" style="justify-content:space-between;gap:4px"><span class="small"><span class="${p.online?"on":"off"}" title="${p.online?"online":"offline"}"></span>${esc(p.name)}</span><button class="btn link small" data-act="kick" data-arg="${esc(p.pid)}">Remove</button></div>`).join(""):`<span class="small muted">No players yet</span>`}</div>`;
+  return`<section class="panel"><div class="panel-head"><div><h2>Players</h2><p class="small muted">Players pick their own team in the lobby. Teams lock when Quarter 1 opens. Removing a player lets them rejoin and choose again.</p></div></div>
+  <div class="subgrid">${v.teams.map(t=>cell(t.name,t.id,v.players.filter(p=>p.teamId===t.id))).join("")}${none.length?cell("Not on a team yet",null,none):""}</div></section>`;
+}
+
+/* ---------- player ---------- */
+function playerView(){
+  const v=V();
+  if(C.kicked)return header()+`<section class="panel"><h2>The facilitator removed you from this game</h2><p class="muted">If that was a mistake, join again.</p><button class="btn primary" data-act="rename">Join again</button></section>`;
+  if(!C.joined||!C.name)return header()+`<section class="panel"><div><span class="label">Game ${esc(C.code)}</span><h2>What's your name?</h2><p class="muted small">Your team and the facilitator will see it.</p></div>
+    ${C.error?`<p class="notice bad">${esc(C.error)}</p>`:""}
+    <div class="field"><label for="p-name">Your name</label><input id="p-name" class="text" maxlength="30" autocomplete="name" value="${esc(val("p-name",C.name))}"></div>
+    <div class="row"><button class="btn primary big" data-act="joinGame" ${C.busy?"disabled":""}>Join game</button><a class="btn link" href="/">Wrong code?</a></div></section>`;
+  if(C.error)return header()+`<section class="panel"><h2>Can't join</h2><p class="muted">${esc(C.error)}</p><a class="btn" href="/">Enter a different code</a></section>`;
+  if(!v||v.role!=="player")return header()+`<section class="panel center"><h2>Joining game ${esc(C.code)}…</h2></section>`;
+  const me=v.me;
+  if(!me)return header()+`<section class="panel"><h2>You're not in this game</h2><button class="btn primary" data-act="rename">Join</button></section>`;
+  if(!me.teamId)return header(statusChip(v))+teamPicker(v);
+  const tid=me.teamId,team=teamById(tid),st=v.state,last=v.history.length?v.history[v.history.length-1]:null;
+  const head=`<section class="panel"><div class="panel-head"><div><span class="label">Your company</span><h2 style="font-size:1.5rem"><span class="dot" style="background:${colorOf(tid)};width:14px;height:14px"></span>${esc(team.name)}</h2>
+    <p class="small muted">Team: ${v.teammates.map(m=>esc(m.name)+(m.me?" (you)":"")).join(", ")}</p></div>${v.status==="lobby"?`<button class="btn link" data-act="leaveTeam">Switch team</button>`:""}</div>
+    <div class="kpis">
+      <div class="kpi"><span class="label">Cash</span><span class="v">${rs(st.cash)}</span><span class="d">${inr(st.cash)}</span></div>
+      <div class="kpi"><span class="label">Factory capacity</span><span class="v">${units(st.capacity)}</span><span class="d">units / quarter</span></div>
+      <div class="kpi"><span class="label">Stock in hand</span><span class="v">${units(st.inventory)}</span><span class="d">units</span></div>
+      <div class="kpi"><span class="label">Brand</span><span class="v">${st.brand.toFixed(0)}<span class="d"> /100</span></span><span class="d">builds with marketing</span></div>
+      <div class="kpi"><span class="label">Quality</span><span class="v">${st.quality.toFixed(0)}<span class="d"> /100</span></span><span class="d">builds with R&amp;D</span></div>
+      <div class="kpi"><span class="label">Loan</span><span class="v">${rs(st.loan)}</span><span class="d">3% interest / quarter</span></div>
+      <div class="kpi"><span class="label">Company value</span><span class="v">${rs(st.value)}</span><span class="d">${last?`Rank ${last.rank} of ${v.teams.length}`:"Rank after Q1"}</span></div>
+    </div></section>`;
+  let main="";
+  if(v.status==="lobby")main=`<section class="panel"><h2>You're in. Quarter 1 starts soon.</h2><p class="muted">When the facilitator opens the quarter, your decision form appears here. Read how the game works below while you wait.</p></section>`;
+  if(v.status==="open")main=decisionForm(v,tid,st);
+  if(v.status==="closed")main=`<section class="panel"><h2>Quarter ${v.round} results are in</h2><p class="muted">Review your statement below. The next quarter opens when the facilitator is ready.</p></section>`;
+  if(v.status==="finished")main=`<section class="panel"><h2>Game over</h2>${last?`<p>${esc(team.name)} finished <b>#${last.rank}</b> of ${v.teams.length} with a company value of <b>${rs(last.value)}</b>.</p>`:""}</section>`;
+  return header(statusChip(v))+head+main+(v.history.length?statement(v):"")+`<section class="panel"><h2>League table</h2>${leaderboard(v,tid)}</section>`+rules(v);
+}
+function teamPicker(v){
+  if(v.status==="finished")return`<section class="panel"><h2>This game has finished</h2></section>`;
+  return`<section class="panel"><div><h2>Hi ${esc(C.name)}, pick your team</h2><p class="muted small">Choose the company your facilitator assigned you to. Everyone on a team can submit; the latest submission counts. <button class="btn link small" data-act="rename">Change name</button></p></div>
+  <div class="team-cards">${v.teams.map(t=>`<button class="team-card" data-act="pick" data-arg="${t.id}" ${C.busy?"disabled":""}><span class="nm">${dotOf(t.id)}${esc(t.name)}</span><span class="small muted">${t.players} player${t.players===1?"":"s"}</span><span class="small" style="color:var(--accent)">Join this team →</span></button>`).join("")}</div></section>`+rules(v);
+}
+function decisionForm(v,tid,st){
+  const r=v.round,key=v.code+"|"+r+"|"+tid;
+  if(C.draftKey!==key){Object.keys(C.draft).filter(k=>k.startsWith("d-")).forEach(k=>delete C.draft[k]);C.draftKey=key}
+  const mine=v.mySub;const base=mine?mine.dec:v.defaultDec;const L=x=>+(x/1e5).toFixed(2);
+  return`<section class="panel"><div class="panel-head"><div><h2>Quarter ${r} decisions</h2><p class="small muted">${mine?`Saved at ${tm(mine.at)} by ${mine.byMe?"you":esc(mine.byName)}. You can revise until the round closes.`:"Nothing submitted for your team yet."}</p></div>${timerHtml(v)}</div>
+  ${eventCard(v.revealedEvents[r-1],r)}
+  <form id="dform" class="form-grid" novalidate>
+    <div class="field"><label for="d-price">Selling price per unit (₹)</label><input id="d-price" type="number" inputmode="numeric" min="100" max="2000" step="5" value="${esc(val("d-price",base.price))}"><span class="hint">₹100–₹2,000. Market reference ₹500.</span></div>
+    <div class="field"><label for="d-prod">Units to produce</label><input id="d-prod" type="number" inputmode="numeric" min="0" max="${st.capacity}" step="100" value="${esc(val("d-prod",Math.min(base.production,st.capacity)))}"><span class="hint">Up to ${units(st.capacity)}. Running at 80%+ saves 5% on unit cost.</span></div>
+    <div class="field"><label for="d-mkt">Marketing (₹ lakh)</label><input id="d-mkt" type="number" inputmode="decimal" min="0" step="0.5" value="${esc(val("d-mkt",L(base.marketing)))}"><span class="hint">Builds brand. Brand fades 15% each quarter.</span></div>
+    <div class="field"><label for="d-rd">R&amp;D and quality (₹ lakh)</label><input id="d-rd" type="number" inputmode="decimal" min="0" step="0.5" value="${esc(val("d-rd",L(base.rd)))}"><span class="hint">Raises quality, and unit cost slightly.</span></div>
+    <div class="field"><label for="d-capex">Factory expansion (₹ lakh)</label><input id="d-capex" type="number" inputmode="decimal" min="0" step="1" value="${esc(val("d-capex",L(base.capex||0)))}"><span class="hint">₹400 per unit of capacity, ready next quarter.</span></div>
+    <div class="field"><label for="d-loan">Borrow (+) or repay (−) (₹ lakh)</label><input id="d-loan" type="number" inputmode="decimal" step="1" value="${esc(val("d-loan",L(base.loan||0)))}"><span class="hint">Loan limit ₹1 Cr. Current loan ${rs(st.loan)}.</span></div>
+  </form>
+  <div id="dpreview"></div>
+  <div class="row"><button class="btn primary big" data-act="submit" ${C.busy?"disabled":""}>${mine?"Update decisions":"Submit decisions"}</button></div></section>`;
+}
+function preview(v,st){
+  const raw=readDecision(),d=normDec(raw,st),uc=estUnitCost(v.revealedEvents[v.round-1],st,d);
+  const prod=d.production*uc,fixed=K.OVERHEAD+st.capacity*K.UPKEEP,interest=st.loan*K.INTEREST;
+  const after=st.cash+d.loan-(prod+d.marketing+d.rd+d.capex+fixed+interest);const notes=[];
+  if(raw.production>st.capacity)notes.push(`Production is capped at your capacity of ${units(st.capacity)} units.`);
+  if(raw.price<100||raw.price>2000)notes.push("Price will be held between ₹100 and ₹2,000.");
+  if(raw.loan!==d.loan)notes.push(`Loan change adjusted to ${rs(d.loan)}: the limit is ₹1 Cr and you can only repay what you owe and can afford.`);
+  if(after<0)notes.push(`Spending exceeds cash before sales by ${rs(-after)}. Sales revenue comes in during the quarter; if you still end below zero the bank adds an emergency loan with a 5% fee.`);
+  const be=d.price>uc?units((d.marketing+d.rd+fixed+interest+st.fixedAssets*K.DEPRECIATION)/(d.price-uc)):"never";
+  return`<div class="preview"><span>Est. unit cost</span><span class="num">${inr(uc)}</span>
+    <span>Production cost (${units(d.production)} units)</span><span class="num">${rs(prod)}</span>
+    <span>Marketing + R&amp;D</span><span class="num">${rs(d.marketing+d.rd)}</span>
+    <span>Overhead, upkeep and interest</span><span class="num">${rs(fixed+interest)}</span>
+    <span>Factory expansion</span><span class="num">${rs(d.capex)}${d.capex?` <span class="muted">(+${units(Math.floor(d.capex/K.CAP_COST))} units)</span>`:""}</span>
+    <span class="total">Cash before sales</span><span class="num total ${after<0?"neg":""}">${rs(after)}</span>
+    <span>Units available to sell</span><span class="num">${units(st.inventory+d.production)}</span>
+    <span>Break-even units at ${inr(d.price)}</span><span class="num">${be}</span></div>${notes.map(n=>`<p class="notice warn small">${n}</p>`).join("")}`;
+}
+function statement(v){const cols=v.history;
+  const line=(lab,f,cls)=>`<tr><td>${lab}</td>${cols.map(c=>`<td class="${cls?cls(c):""}">${f(c)}</td>`).join("")}</tr>`;
+  return`<section class="panel"><div class="panel-head"><h2>Your quarterly statements</h2><span class="small muted">₹ unless marked</span></div><div class="tbl-wrap"><table><thead><tr><th></th>${cols.map(c=>`<th>Q${c.round} · ${EVENTS[c.event].name}</th>`).join("")}</tr></thead><tbody>
+  ${line("Price charged",c=>inr(c.dec.price))}${line("Units produced",c=>units(c.dec.production))}${line("Demand for you",c=>units(c.demand))}${line("Units sold",c=>units(c.sales))}${line("Lost sales (out of stock)",c=>units(c.lostSales),c=>c.lostSales?"neg":"")}${line("Market share",c=>pct(c.share))}
+  ${line("Revenue",c=>rs(c.revenue))}${line("Cost of goods sold",c=>rs(-c.cogs))}${line("Gross profit",c=>rs(c.grossProfit))}${line("Marketing",c=>rs(-c.dec.marketing))}${line("R&amp;D",c=>rs(-c.dec.rd))}${line("Overhead + upkeep",c=>rs(-(c.overhead+c.upkeep)))}${line("Storage",c=>rs(-c.holding))}${line("Depreciation",c=>rs(-c.depreciation))}${line("Interest",c=>rs(-c.interest))}${line("Tax (25%)",c=>rs(-c.tax))}${line("Emergency loan fee",c=>rs(-c.fee))}
+  ${line("<b>Net profit</b>",c=>rs(c.netProfit),c=>c.netProfit>=0?"pos":"neg")}${line("Closing cash",c=>rs(c.cash))}${line("Brand / Quality",c=>c.brand.toFixed(0)+" / "+c.quality.toFixed(0))}${line("Company value",c=>rs(c.value))}${line("Rank",c=>"#"+c.rank)}
+  </tbody></table></div>${c0auto(cols)}</section>`;
+}
+const c0auto=cols=>cols.some(c=>c.auto)?`<p class="small muted">Quarters where your team didn't submit used last quarter's decisions automatically.</p>`:"";
+
+/* ---------- projector screen ---------- */
+function screenView(){
+  const v=V();
+  if(C.error)return header()+`<section class="panel"><h2>${esc(C.error)}</h2></section>`;
+  if(!v)return header()+`<section class="panel center"><h2>Connecting…</h2></section>`;
+  const ev=v.currentEvent;
+  const top=v.status==="lobby"?`<section class="panel"><h2>Join the game</h2>${joinPanel(v,true)}<div class="subgrid">${v.teams.map(t=>`<div class="subcell"><b>${dotOf(t.id)}${esc(t.name)}</b><span class="small muted">${t.players} player${t.players===1?"":"s"}</span></div>`).join("")}</div></section>`
+    :`<section class="panel"><div class="panel-head">${ev&&v.status==="open"?eventCard(ev,v.round):`<h2>${v.status==="finished"?"Final standings":`Quarter ${v.round} results`}</h2>`}${timerHtml(v)}</div>
+      ${v.status==="open"?`<div class="subgrid">${v.teams.map(t=>`<div class="subcell ${t.submitted?"done":""}"><b>${dotOf(t.id)}${esc(t.name)}</b><span class="small">${t.submitted?"Submitted ✓":"Deciding…"}</span></div>`).join("")}</div>`:""}
+      <p class="small muted">Join code <b class="mono">${v.code}</b> · ${esc(origin.replace(/^https?:\/\//,""))}</p></section>`;
+  return`<div class="screen" style="display:flex;flex-direction:column;gap:18px">${header(statusChip(v))}${top}<section class="panel"><h2>League table</h2>${leaderboard(v)}</section></div>`;
+}
+
+/* ---------- render ---------- */
+let rq=0;function render(){if(rq)return;rq=requestAnimationFrame(()=>{rq=0;draw()})}
+function draw(){
+  const a=document.activeElement,fid=a&&a.id;let ss=null,se=null;try{ss=a.selectionStart;se=a.selectionEnd}catch(e){}
+  let html;
+  if(C.mode==="host")html=hostView();else if(C.mode==="player")html=playerView();else if(C.mode==="screen")html=screenView();else html=homeView();
+  $("#app").innerHTML=html;
+  document.querySelectorAll("details").forEach(d=>{if(openDetails.has(d.querySelector("summary").textContent))d.open=true});
+  if(fid){const el=document.getElementById(fid);if(el){el.focus({preventScroll:true});try{if(ss!=null)el.setSelectionRange(ss,se)}catch(e){}}}
+  tickTimer();
+  const pv=$("#dpreview");if(pv&&V()&&V().state)pv.innerHTML=preview(V(),V().state);
+}
+/* keep <details> open state across re-renders */
+const openDetails=new Set();
+document.addEventListener("toggle",e=>{const d=e.target;if(d.tagName!=="DETAILS")return;const k=d.querySelector("summary").textContent;d.open?openDetails.add(k):openDetails.delete(k)},true);
+
+document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(!b)return;e.preventDefault();const k=b.dataset.act,arg=b.dataset.arg;
+  if(k==="tab"){C.tab=arg;C.confirm=null;render();return}
+  if(k==="ask"){C.confirm=arg||null;render();return}
+  if(act[k])act[k](arg)});
+document.addEventListener("input",e=>{const t=e.target;if(!t.id)return;C.draft[t.id]=t.value;
+  if(t.hasAttribute("data-rerender"))render();
+  else if(t.id.startsWith("d-")){const v=V();const p=$("#dpreview");if(p&&v&&v.state)p.innerHTML=preview(v,v.state)}});
+document.addEventListener("change",e=>{const t=e.target;if(t.id){C.draft[t.id]=t.value;if(t.hasAttribute("data-rerender"))render()}});
+document.addEventListener("keydown",e=>{if(e.key!=="Enter")return;const id=e.target.id;
+  if(id==="h-code"){e.preventDefault();act.goJoin()}else if(id==="p-name"){e.preventDefault();act.joinGame()}});
+document.addEventListener("submit",e=>e.preventDefault());
+render();
+</script>
+</body>
+</html>

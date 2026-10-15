@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: ledger-league
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
